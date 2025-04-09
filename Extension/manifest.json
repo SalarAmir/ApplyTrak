@@ -1,0 +1,9 @@
+{
+    "manifest_version": 3,
+    "name": "Internship Email Tracker",
+    "version": "1.0",
+    "permissions": ["storage", "activeTab"],
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
