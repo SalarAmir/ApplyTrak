@@ -1,17 +1,22 @@
-const fastify = require('fastify')({ logger: true });
-const { supabase } = require('./db');
-const { google } = require('googleapis');
-const { OAuth2 } = google.auth;
-require('dotenv').config();
+import { fastify, BASE_PATH } from './init.js';
+import { google } from 'googleapis';
+import { supabase } from '../db.js';
 
+// Initialize OAuth2 client
+const { OAuth2 } = google.auth;
 const oauth2Client = new OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
   process.env.REDIRECT_URI
 );
 
-// Redirect to Google OAuth
-fastify.get('/auth/google', async (request, reply) => {
+// Root route
+fastify.get('/', async (request, reply) => {
+  return reply.send({ message: 'Welcome to ApplyTrak API' });
+});
+
+// Authenticate with Google
+fastify.get(`${BASE_PATH}/auth/google`, async (request, reply) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/gmail.readonly']
@@ -20,7 +25,7 @@ fastify.get('/auth/google', async (request, reply) => {
 });
 
 // Handle OAuth callback
-fastify.get('/oauth2callback', async (request, reply) => {
+fastify.get(`${BASE_PATH}/oauth2callback`, async (request, reply) => {
   const { code } = request.query;
   try {
     const { tokens } = await oauth2Client.getToken(code);
@@ -36,12 +41,22 @@ fastify.get('/oauth2callback', async (request, reply) => {
 });
 
 // Check authentication status
-fastify.get('/check-auth', async (request, reply) => {
+fastify.get(`${BASE_PATH}/check-auth`, async (request, reply) => {
   const { data } = await supabase.from('tokens').select('id').limit(1);
   return { authenticated: !!data.length };
 });
 
-// Check for responses
+// Fetch tracked emails
+fastify.get(`${BASE_PATH}/emails`, async (request, reply) => {
+  const { data, error } = await supabase.from('emails').select('*');
+  if (error) {
+    reply.status(500).send({ error: 'Failed to fetch emails' });
+    return;
+  }
+  return data;
+});
+
+// Background task to check for responses
 async function checkForResponses() {
   const { data: tokens } = await supabase.from('tokens').select('*').single();
   if (!tokens) return;
@@ -80,15 +95,3 @@ async function checkForResponses() {
 
 // Run every 10 minutes
 setInterval(checkForResponses, 10 * 60 * 1000);
-
-// Start server
-const start = async () => {
-  try {
-    await fastify.listen({ port: 3000 });
-    console.log('Server running on http://localhost:3000');
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-};
-start();
