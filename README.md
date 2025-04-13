@@ -14,7 +14,11 @@ REST API: Manage email records via a Fastify-based API with endpoints for adding
 Supabase Backend: Store email and token data securely in a Supabase database.
 
 ### Technologies
+
 Frontend: React, Chrome Extension API
+
 Backend: Fastify, Node.js
+
 Database: Supabase
+
 APIs: Gmail API, Google OAuth 2.0
